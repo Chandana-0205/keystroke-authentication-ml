@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Keystroke Authentication Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#0f2027;
+color:white;
+text-align:center;
+margin:0;
+padding:20px;
+}
+
+.container{
+max-width:1200px;
+margin:auto;
+}
+
+/* header */
+
+h1{
+margin-bottom:20px;
+}
+
+/* control panel */
+
+.controls{
+margin-bottom:20px;
+}
+
+select,button{
+padding:10px 20px;
+margin:5px;
+border:none;
+border-radius:6px;
+}
+
+button{
+background:#1565c0;
+color:white;
+cursor:pointer;
+}
+
+button:hover{
+background:#0d47a1;
+}
+
+/* metrics cards */
+
+.cards{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:15px;
+margin-top:20px;
+}
+
+.card{
+background:#1c2b36;
+padding:20px;
+border-radius:10px;
+box-shadow:0px 0px 10px rgba(0,0,0,0.5);
+}
+
+.card h3{
+margin:0;
+font-size:18px;
+color:#90caf9;
+}
+
+.card p{
+font-size:22px;
+margin-top:10px;
+}
+
+/* graph grid */
+
+.graphs{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:30px;
+margin-top:40px;
+}
+
+.graphBox{
+background:#1c2b36;
+padding:20px;
+border-radius:10px;
+}
+
+/* simulation */
+
+.simulation{
+margin-top:40px;
+background:#1c2b36;
+padding:20px;
+border-radius:10px;
+}
+
+.result{
+font-size:22px;
+margin-top:10px;
+font-weight:bold;
+}
+
+.progress{
+width:80%;
+margin:auto;
+background:#333;
+height:20px;
+border-radius:20px;
+overflow:hidden;
+}
+
+.bar{
+height:100%;
+width:0%;
+background:#4caf50;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Keystroke Authentication Analytics</h1>
+
+<div class="controls">
+
+<select id="user">
+
+{% for u in users %}
+<option value="{{u}}">{{u}}</option>
+{% endfor %}
+
+</select>
+
+<button onclick="analyze()">Analyze User</button>
+
+</div>
+
+
+<!-- metrics cards -->
+
+<div class="cards">
+
+<div class="card">
+<h3>Accuracy</h3>
+<p id="accuracy">--</p>
+</div>
+
+<div class="card">
+<h3>FAR</h3>
+<p id="far">--</p>
+</div>
+
+<div class="card">
+<h3>FRR</h3>
+<p id="frr">--</p>
+</div>
+
+<div class="card">
+<h3>AUC</h3>
+<p id="auc">--</p>
+</div>
+
+</div>
+
+
+<!-- graphs -->
+
+<div class="graphs">
+
+<div class="graphBox">
+<h3>Distance Distribution</h3>
+<canvas id="chart"></canvas>
+</div>
+
+<div class="graphBox">
+<h3>ROC Curve</h3>
+<canvas id="roc"></canvas>
+</div>
+
+<div class="graphBox">
+<h3>Typing Pattern</h3>
+<canvas id="pattern"></canvas>
+</div>
+
+</div>
+
+
+<!-- simulation -->
+
+<div class="simulation">
+
+<h2>Live Authentication Simulation</h2>
+
+<p>Simulate a login attempt and see if the system classifies it as Genuine or Imposter.</p>
+
+<button onclick="simulate()">Simulate Login</button>
+
+<div class="result" id="simResult"></div>
+
+<div class="progress">
+<div class="bar" id="confidenceBar"></div>
+</div>
+
+<p id="confidenceText"></p>
+
+</div>
+
+</div>
+
+<script>
+
+let chart=null
+let rocChart=null
+let patternChart=null
+
+function analyze(){
+
+let user=document.getElementById("user").value
+
+fetch("/analyze",{
+
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({user:user})
+
+})
+.then(res=>res.json())
+.then(data=>{
+
+let ctx=document.getElementById("chart").getContext("2d")
+let roc=document.getElementById("roc").getContext("2d")
+let pat=document.getElementById("pattern").getContext("2d")
+
+if(chart) chart.destroy()
+if(rocChart) rocChart.destroy()
+if(patternChart) patternChart.destroy()
+
+chart=new Chart(ctx,{
+type:"scatter",
+data:{
+datasets:[
+{
+label:"Genuine",
+data:data.genuine.map((v,i)=>({x:i,y:v})),
+backgroundColor:"green"
+},
+{
+label:"Imposter",
+data:data.imposter.map((v,i)=>({x:i,y:v})),
+backgroundColor:"red"
+}
+]
+}
+})
+
+rocChart=new Chart(roc,{
+type:"line",
+data:{
+labels:data.roc_x,
+datasets:[
+{
+label:"ROC Curve",
+data:data.roc_y,
+borderColor:"cyan",
+fill:false
+}
+]
+}
+})
+
+patternChart=new Chart(pat,{
+type:"line",
+data:{
+labels:data.pattern.map((_,i)=>i),
+datasets:[
+{
+label:"Typing Pattern",
+data:data.pattern,
+borderColor:"yellow",
+fill:false
+}
+]
+}
+})
+
+/* update cards */
+
+document.getElementById("accuracy").innerHTML=(data.accuracy*100).toFixed(2)+"%"
+document.getElementById("far").innerHTML=(data.far*100).toFixed(2)+"%"
+document.getElementById("frr").innerHTML=(data.frr*100).toFixed(2)+"%"
+document.getElementById("auc").innerHTML=data.auc.toFixed(3)
+
+})
+
+}
+
+function simulate(){
+
+let user=document.getElementById("user").value
+
+fetch("/simulate",{
+
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({user:user})
+
+})
+.then(res=>res.json())
+.then(data=>{
+
+let result=document.getElementById("simResult")
+let bar=document.getElementById("confidenceBar")
+
+result.innerHTML="Prediction: "+data.prediction+" | Actual: "+data.actual
+
+if(data.prediction==="Genuine"){
+result.style.color="lime"
+bar.style.background="lime"
+}else{
+result.style.color="red"
+bar.style.background="red"
+}
+
+bar.style.width=(data.confidence*100)+"%"
+
+document.getElementById("confidenceText").innerHTML=
+"Confidence: "+(data.confidence*100).toFixed(2)+"%"
+
+})
+
+}
+
+</script>
+
+</body>
+
