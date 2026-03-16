@@ -17,8 +17,8 @@ y = data["subject"].values
 # Train Random Forest model
 
 model = RandomForestClassifier(
-    n_estimators=30,
-    max_depth=15,
+    n_estimators=20,
+    max_depth=10,
     n_jobs=-1,
     random_state=42
 )
