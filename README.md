@@ -25,15 +25,6 @@ The system captures typing data, extracts features like dwell time and flight ti
 
 ---
 
-## 🧩 System Workflow
-1. User enters typing input
-2. System captures keystroke timings
-3. Features are extracted (dwell time & flight time)
-4. Data is processed and sent to ML model
-5. Model predicts user authenticity
-6. Result is displayed (Genuine / Imposter)
-
----
 
 ### 💻 Programming Language
 - Python 3.x
@@ -111,5 +102,3 @@ Chandana Shetty
 Give it a ⭐ on GitHub!
 
 ---
-
-## 📂 Project Structure
